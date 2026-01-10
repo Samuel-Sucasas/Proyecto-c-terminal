@@ -1,30 +1,45 @@
+//Librerias utilizadas
+#pragma once
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <algorithm>
+#include <utility>
 using namespace std;
 //primitivas de arboles
-
-struct Nodo{
-    int dato;
-    int altura;
-    Nodo* izq;
-    Nodo* derch;
+//Sistema de archivos  
+struct FSNode {
+	string name;
+	bool isDir;
+	string content; 
+	FSNode* parent;
+	FSNode** children;
+	size_t children_count;
+	size_t children_capacity;
+	FSNode(const string &n, bool dir, FSNode* p=nullptr): name(n), isDir(dir), content(), parent(p), children(nullptr), children_count(0), children_capacity(0) {}
 };
 
+// Arreglo dinámico de cadenas (puro puntero)
+struct ArregloCadenas {
+	string* items;
+	size_t count;
+	size_t capacity;
+	ArregloCadenas(): items(nullptr), count(0), capacity(0) {}
+};
 
-int obtenerAltura(Nodo* n) {
-    if (n == nullptr) return 0;
-    return n->altura;
+static void agregarCadena(ArregloCadenas &arr, const string &s){
+	if(arr.capacity==0){ arr.capacity = 4; arr.items = new string[arr.capacity]; }
+	else if(arr.count==arr.capacity){ size_t nc = arr.capacity * 2; string* nitems = new string[nc]; for(size_t i=0;i<arr.count;++i) nitems[i]=move(arr.items[i]); delete [] arr.items; arr.items = nitems; arr.capacity = nc; }
+	arr.items[arr.count++] = s;
 }
 
-int maximo(int a, int b) {
-    return (a > b) ? a : b;
+static void liberarArregloCadenas(ArregloCadenas &arr){ 
+	if(arr.items) delete [] arr.items; arr.items = nullptr; arr.count = arr.capacity = 0; 
 }
 
-// Función para encontrar el nodo con valor mínimo 
-Nodo* nodoMinimo(Nodo* nodo) {
-    Nodo* actual = nodo;
-    while (actual->izq != nullptr)
-        actual = actual->izq;
-    return actual;
+static void invertirArregloCadenas(ArregloCadenas &arr){ 
+	for(size_t i=0;i<arr.count/2;++i) swap(arr.items[i], arr.items[arr.count-1-i]); 
 }
 
 Nodo *crearNodo(int valor){
