@@ -91,3 +91,57 @@ static FSNode* buscarHijo(FSNode* dir, const string &name){
 	for(size_t i=0;i<dir->children_count;++i) if(dir->children[i] && dir->children[i]->name==name) return dir->children[i];
 	return nullptr;
 }
+
+// Destruir árbol
+static void liberarArbol(FSNode* n){
+	if(!n) return;
+	for(size_t i=0;i<n->children_count;++i) liberarArbol(n->children[i]);
+	if(n->children) delete [] n->children;
+	delete n;
+}
+
+// Guardar: formato simple por líneas: D|/abs/path  o F|/abs/path|content_escaped
+static string escaparContenido(const string &s){
+	string out;
+	for(char c: s){
+        if(c=='\n') out += "\\n"; 
+        else if(c=='|') out += "\\p"; 
+        else out.push_back(c);
+    }
+	return out;
+}
+
+static string desescaparContenido(const string &s){
+	string out;
+	for(size_t i=0;i<s.size();++i){ 
+        if(s[i]=='\\' && i+1<s.size()){ 
+            if(s[i+1]=='n'){
+             out+='\n'; ++i; 
+            } else if(s[i+1]=='p'){ 
+                out += '|'; ++i;
+            } else out += s[i+1], ++i;
+        } else out += s[i];
+    }
+	return out;
+}
+
+static void guardarNodoPreorden(FSNode* node, const string &pathSoFar, ofstream &out){
+	string full = (pathSoFar=="/")? ("/" + node->name) : (pathSoFar + "/" + node->name);
+	if(node->parent==nullptr){ 
+		out << "D|/\n";
+	} else if(node->isDir){
+		out << "D|" << full << "\n";
+	} else {
+		out << "F|" << full << "|" << escaparContenido(node->content) << "\n";
+	}
+	for(size_t i=0;i<node->children_count;++i) guardarNodoPreorden(node->children[i], (node->parent==nullptr)?"":full, out);
+}
+
+//Para guardar archivos
+static bool guardarFSaArchivo(FSNode* root, const string &ruta){
+	ofstream out(ruta);
+	if(!out.is_open()) return false;
+	guardarNodoPreorden(root, "", out);
+	out.close();
+	return true;
+}
