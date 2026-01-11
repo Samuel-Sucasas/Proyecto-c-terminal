@@ -1,5 +1,5 @@
 //Librerias utilizadas
-
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -143,5 +143,92 @@ static bool guardarFSaArchivo(FSNode* root, const string &ruta){
 	if(!out.is_open()) return false;
 	guardarNodoPreorden(root, "", out);
 	out.close();
+	return true;
+}
+
+// Resolver ruta absoluta o relativa
+static FSNode* resolverRuta(FSNode* base, const string &path, FSNode* root){
+	if(path.empty()) return base;
+	ArregloCadenas partes = dividirRuta(path);
+	FSNode* cur = (path.size() && path[0]=='/') ? root : base;
+	for(size_t i=0;i<partes.count;++i){
+		const string &p = partes.items[i];
+		if(p==".") continue;
+		if(p==".."){ 
+            if(cur->parent) cur = cur->parent; continue; 
+        }
+		bool found = false;
+		for(size_t j=0;j<cur->children_count;++j){ 
+            if(cur->children[j]->name==p){ 
+            cur = cur->children[j]; found = true; break; 
+        } 
+    }
+		if(!found){ 
+            liberarArregloCadenas(partes); return nullptr; 
+        }
+	}
+	liberarArregloCadenas(partes);
+	return cur;
+}
+
+static FSNode* crearDirectoriosParaRuta(FSNode* root, const string &absPath){
+	if(absPath.empty() || absPath[0]!='/') return nullptr;
+	FSNode* cur = root;
+	ArregloCadenas partes = dividirRuta(absPath);
+	for(size_t i=0;i<partes.count;++i){
+		const string &p = partes.items[i];
+		bool found=false;
+		for(size_t j=0;j<cur->children_count;++j){ if(cur->children[j]->name==p && cur->children[j]->isDir){ cur = cur->children[j]; found=true; break; } }
+		if(!found){
+			FSNode* nd = new FSNode(p, true, cur);
+			agregarHijo(cur, nd);
+			nd->parent = cur;
+			cur = nd;
+		}
+	}
+	liberarArregloCadenas(partes);
+	return cur;
+}
+
+// Cargar archivo con el formato descrito arriba
+static bool cargarFSDesdeArchivo(FSNode* &root, const string &ruta){
+	ifstream in(ruta);
+	if(!in.is_open()) return false;
+	// destruir previo
+	if(root) { 
+        liberarArbol(root); root=nullptr; 
+    }
+	root = new FSNode("", true, nullptr); // nueva rama vacia
+	string line;
+	while(getline(in, line)){
+		if(line.empty()) continue;
+		if(line.rfind("D|",0)==0){
+			string path = line.substr(2);
+			if(path=="/") continue;
+			// Aqui se crean los directorios
+			crearDirectoriosParaRuta(root, path);
+		} else if(line.rfind("F|",0)==0){
+			size_t p1 = line.find('|',2);
+			if(p1==string::npos) continue;
+			string path = line.substr(2, p1-2);
+			string content = line.substr(p1+1);
+			ArregloCadenas partes = dividirRuta(path);
+			if(partes.count==0){ 
+                liberarArregloCadenas(partes); continue; 
+            }
+			string filename = partes.items[partes.count-1];
+			partes.count--;
+			string parentPath = unirRuta(partes);
+			FSNode* parent = (parentPath=="/")? root : crearDirectoriosParaRuta(root, parentPath);
+			if(!parent){ 
+                liberarArregloCadenas(partes); continue; 
+            }
+			FSNode* f = new FSNode(filename, false, parent);
+			f->content = desescaparContenido(content);
+			agregarHijo(parent, f);
+			liberarArregloCadenas(partes);
+		}
+	}
+	in.close();
 	return true;
 }
