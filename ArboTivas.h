@@ -42,180 +42,52 @@ static void invertirArregloCadenas(ArregloCadenas &arr){
 	for(size_t i=0;i<arr.count/2;++i) swap(arr.items[i], arr.items[arr.count-1-i]); 
 }
 
-Nodo *crearNodo(int valor){
-    Nodo* nuevoNodo = new Nodo();
-    nuevoNodo->dato = valor;
-    nuevoNodo->altura = 1; 
-    nuevoNodo->izq = nullptr;
-    nuevoNodo->derch = nullptr;
-    return nuevoNodo;
-}
-
-
-Nodo* rotacionDerecha(Nodo* p) {
-    Nodo* q = p->izq;
-    Nodo* T2 = q->derch;
-
-    q->derch = p;
-    p->izq = T2;
-
-    p->altura = maximo(obtenerAltura(p->izq), obtenerAltura(p->derch)) + 1;
-    q->altura = maximo(obtenerAltura(q->izq), obtenerAltura(q->derch)) + 1;
-
-    return q;
-}
-
-Nodo* rotacionIzquierda(Nodo* q) {
-    Nodo* p = q->derch;
-    Nodo* T2 = p->izq;
-
-    p->izq = q;
-    q->derch = T2;
-
-    q->altura = maximo(obtenerAltura(q->izq), obtenerAltura(q->derch)) + 1;
-    p->altura = maximo(obtenerAltura(p->izq), obtenerAltura(p->derch)) + 1;
-
-    return p;
-}
-
-int obtenerBalance(Nodo* n) {
-    if (n == nullptr) return 0;
-    return obtenerAltura(n->izq) - obtenerAltura(n->derch);
-}
-
-bool buscarNodo(Nodo* arbol, int valor) {
-    if (arbol == nullptr) {
-        return false;
-    }
-    if (arbol->dato == valor) {
-        return true; 
-    }
-
-    if (valor < arbol->dato) {
-        return buscarNodo(arbol->izq, valor);
-    } else {
-        return buscarNodo(arbol->derch, valor);
-    }
-}
-
-
-
-Nodo* insertarAVL(Nodo* nodo, int valor) {
-    if (nodo == nullptr)
-        return crearNodo(valor);
-
-    if (valor < nodo->dato)
-        nodo->izq = insertarAVL(nodo->izq, valor);
-    else if (valor > nodo->dato)
-        nodo->derch = insertarAVL(nodo->derch, valor);
-    else
-        return nodo;
-
-    nodo->altura = 1 + maximo(obtenerAltura(nodo->izq), obtenerAltura(nodo->derch));
-
-    int balance = obtenerBalance(nodo);
-
-    if (balance > 1 && valor < nodo->izq->dato)
-        return rotacionDerecha(nodo);
-
-    if (balance < -1 && valor > nodo->derch->dato)
-        return rotacionIzquierda(nodo);
-
-    if (balance > 1 && valor > nodo->izq->dato) {
-        nodo->izq = rotacionIzquierda(nodo->izq);
-        return rotacionDerecha(nodo);
-    }
-
-    if (balance < -1 && valor < nodo->derch->dato) {
-        nodo->derch = rotacionDerecha(nodo->derch);
-        return rotacionIzquierda(nodo);
-    }
-
-    return nodo;
-}
-
-void insertar(Nodo* &arbol, int valor){
-    arbol = insertarAVL(arbol, valor);
-}
-
-
-Nodo* eliminarAVL(Nodo* raiz, int valor) {
-    if (raiz == nullptr)
-        return raiz;
-
-    if (valor < raiz->dato)
-        raiz->izq = eliminarAVL(raiz->izq, valor);
-    else if (valor > raiz->dato)
-        raiz->derch = eliminarAVL(raiz->derch, valor);
-    else {
-        if ((raiz->izq == nullptr) || (raiz->derch == nullptr)) {
-            Nodo *temp = raiz->izq ? raiz->izq : raiz->derch;
-
-            if (temp == nullptr) { // Caso: Sin hijos
-                temp = raiz;
-                raiz = nullptr;
-            } else { // Caso: Un hijo
-                *raiz = *temp; // Copiar contenido del hijo no vacío
+static ArregloCadenas dividirRuta(const string &path){
+	ArregloCadenas partes;
+	string tmp;
+	for(char c: path){
+		if(c=='/'){
+			if(!tmp.empty()){ 
+                agregarCadena(partes, tmp); tmp.clear();
             }
-            delete temp;
-        } else {
-            // Caso: Dos hijos. Obtener el sucesor en inorden (menor del subárbol derecho)
-            Nodo* temp = nodoMinimo(raiz->derch);
-
-            // Copiar el dato del sucesor a este nodo
-            raiz->dato = temp->dato;
-
-            // Eliminar el sucesor
-            raiz->derch = eliminarAVL(raiz->derch, temp->dato);
-        }
-    }
-
-    if (raiz == nullptr)
-        return raiz;
-
-    
-    raiz->altura = 1 + maximo(obtenerAltura(raiz->izq), obtenerAltura(raiz->derch));
-
-    int balance = obtenerBalance(raiz);
-
-    // Caso Izquierda Izquierda
-    if (balance > 1 && obtenerBalance(raiz->izq) >= 0)
-        return rotacionDerecha(raiz);
-
-    // Caso Izquierda Derecha
-    if (balance > 1 && obtenerBalance(raiz->izq) < 0) {
-        raiz->izq = rotacionIzquierda(raiz->izq);
-        return rotacionDerecha(raiz);
-    }
-
-    // Caso Derecha Derecha
-    if (balance < -1 && obtenerBalance(raiz->derch) <= 0)
-        return rotacionIzquierda(raiz);
-
-    // Caso Derecha Izquierda
-    if (balance < -1 && obtenerBalance(raiz->derch) > 0) {
-        raiz->derch = rotacionDerecha(raiz->derch);
-        return rotacionIzquierda(raiz);
-    }
-
-    return raiz;
+		} else tmp.push_back(c);
+	}
+	if(!tmp.empty()) agregarCadena(partes, tmp);
+	return partes;
 }
 
-void eliminar(Nodo* &arbol, int valor) {
-    arbol = eliminarAVL(arbol, valor);
+//Union de Rutas 
+static string unirRuta(const ArregloCadenas &partes){
+	if(partes.count==0) return "/";
+	string s;
+	for(size_t i=0;i<partes.count;++i){
+         s += "/" + partes.items[i];
+    }
+	return s.empty()?"/":s;
 }
 
+// Manejo de hijos con punteros 
+static void agregarHijo(FSNode* parent, FSNode* hijo){
+	if(!parent) return;
+	if(parent->children_capacity==0){ parent->children_capacity = 4; parent->children = new FSNode*[parent->children_capacity]; }
+	else if(parent->children_count==parent->children_capacity){ size_t nc = parent->children_capacity * 2; FSNode** nitems = new FSNode*[nc]; for(size_t i=0;i<parent->children_count;++i) nitems[i]=parent->children[i]; delete [] parent->children; parent->children = nitems; parent->children_capacity = nc; }
+	parent->children[parent->children_count++] = hijo;
+}
+//Eliminacion de hijo para el arbol
+static bool eliminarHijo(FSNode* parent, FSNode* hijo){
+	if(!parent || parent->children_count==0) return false;
+	size_t idx = parent->children_count;
+	for(size_t i=0;i<parent->children_count;++i) if(parent->children[i]==hijo){ idx = i; break; }
+	if(idx==parent->children_count) return false;
+	for(size_t i=idx;i+1<parent->children_count;++i) parent->children[i]=parent->children[i+1];
+	parent->children_count--;
+	parent->children[parent->children_count] = nullptr;
+	return true;
+}
 
-void mostrarArbol(Nodo* arbol ,int cont){
-    if (arbol == nullptr){
-        return;
-    }else{
-        mostrarArbol(arbol->derch,cont+1);
-        for (int i = 0; i < cont; i++)
-        {
-            cout<<"   "; 
-        }
-        cout<<arbol->dato<<endl;
-        mostrarArbol(arbol->izq,cont+1);
-    }
+// Sirve para buscar hijo por nombre
+static FSNode* buscarHijo(FSNode* dir, const string &name){
+	if(!dir || !dir->isDir) return nullptr;
+	for(size_t i=0;i<dir->children_count;++i) if(dir->children[i] && dir->children[i]->name==name) return dir->children[i];
+	return nullptr;
 }
